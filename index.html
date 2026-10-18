@@ -1,0 +1,276 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101813">
+  <title>FitPilot AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 20px;
+      background: #101813; color: #f3f7f3;
+      font-family: Arial, sans-serif;
+    }
+    main { max-width: 650px; margin: auto; }
+    h1 { color: #9beaab; }
+    p { line-height: 1.6; }
+    .card {
+      background: #1c2920; padding: 16px;
+      border-radius: 16px; margin: 14px 0;
+    }
+    label { display: block; margin: 14px 0 6px; }
+    select, button {
+      width: 100%; padding: 12px;
+      border-radius: 9px; font-size: 16px;
+    }
+    select {
+      background: #101813; color: white;
+      border: 1px solid #536859;
+    }
+    button {
+      margin-top: 12px; border: 0;
+      background: #9beaab; color: #142018;
+      font-weight: bold; cursor: pointer;
+    }
+    .muted { color: #c0cec2; font-size: 14px; }
+    li { margin: 10px 0; line-height: 1.5; }
+    .done { color: #9beaab; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>FitPilot AI</h1>
+  <p>Your personal fitness journey starts here.</p>
+
+  <section class="card">
+    <h2>Workout Planner</h2>
+
+    <label for="muscle">Muscle group</label>
+    <select id="muscle">
+      <option>Chest</option>
+      <option>Back</option>
+      <option>Shoulders</option>
+      <option>Biceps</option>
+      <option>Triceps</option>
+      <option>Abs</option>
+      <option>Legs</option>
+      <option>Full Body</option>
+    </select>
+
+    <label for="level">Training level</label>
+    <select id="level">
+      <option>Beginner</option>
+      <option>Intermediate</option>
+      <option>Advanced</option>
+      <option>Expert</option>
+    </select>
+
+    <button id="showWorkout">Show Workout</button>
+  </section>
+
+  <section class="card">
+    <h2 id="workoutTitle">Your Exercises</h2>
+    <div id="exerciseList">Choose your workout above.</div>
+    <button id="completeWorkout">Complete Session</button>
+    <p id="status" aria-live="polite"></p>
+  </section>
+
+  <section class="card">
+    <h2>Workout History</h2>
+    <p id="total">Completed sessions: 0</p>
+    <ul id="history"></ul>
+    <button id="clearHistory">Clear History</button>
+    <p class="muted">Records are saved only in this browser.</p>
+  </section>
+</main>
+
+<script>
+const exercises = {
+  Chest: {
+    name: "Wall Push-up",
+    sets: 2, reps: "8-10",
+    steps: [
+      "Stand facing a wall and place your palms at chest height.",
+      "Keep your body straight and bend your elbows slowly.",
+      "Push away from the wall with controlled movement."
+    ],
+    breathing: "Breathe in as you move toward the wall; breathe out as you push away.",
+    safety: "Stop if you feel pain. Use a comfortable range of motion."
+  },
+  Back: {
+    name: "Resistance-free Shoulder Blade Squeeze",
+    sets: 2, reps: "10",
+    steps: [
+      "Stand tall with relaxed shoulders.",
+      "Gently draw your shoulder blades back.",
+      "Pause briefly, then relax without shrugging."
+    ],
+    breathing: "Breathe naturally; do not hold your breath.",
+    safety: "Keep the movement comfortable and pain-free."
+  },
+  Shoulders: {
+    name: "Wall Shoulder Slide",
+    sets: 2, reps: "8",
+    steps: [
+      "Stand comfortably against a wall.",
+      "Move your arms upward only as far as comfortable.",
+      "Return slowly without forcing your shoulders."
+    ],
+    breathing: "Breathe naturally throughout the movement.",
+    safety: "Stop if you feel shoulder pain or pinching."
+  },
+  Biceps: {
+    name: "Unweighted Elbow Curl",
+    sets: 2, reps: "10",
+    steps: [
+      "Stand tall with your arms by your sides.",
+      "Bend your elbows slowly without swinging.",
+      "Lower your hands with control."
+    ],
+    breathing: "Breathe out while curling and in while lowering.",
+    safety: "Use slow, comfortable movements."
+  },
+  Triceps: {
+    name: "Gentle Elbow Extension",
+    sets: 2, reps: "10",
+    steps: [
+      "Keep your upper arms close to your sides.",
+      "Straighten your elbows comfortably.",
+      "Return slowly without locking your joints."
+    ],
+    breathing: "Breathe out while extending; breathe in while returning.",
+    safety: "Do not force the elbow or move through pain."
+  },
+  Abs: {
+    name: "Standing Abdominal Brace",
+    sets: 2, reps: "5 breaths",
+    steps: [
+      "Stand tall with relaxed shoulders.",
+      "Gently tighten your abdominal muscles.",
+      "Continue breathing while holding the brace."
+    ],
+    breathing: "Keep breathing normally; never hold your breath.",
+    safety: "Relax if you feel discomfort or dizziness."
+  },
+  Legs: {
+    name: "Chair Sit-to-Stand",
+    sets: 2, reps: "8",
+    steps: [
+      "Use a stable chair placed against a wall.",
+      "Keep your feet flat and stand up smoothly.",
+      "Sit down slowly with control."
+    ],
+    breathing: "Breathe out while standing and in while sitting.",
+    safety: "Use support if needed; stop if you feel pain."
+  },
+  "Full Body": {
+    name: "Easy March in Place",
+    sets: 2, reps: "30 seconds",
+    steps: [
+      "Stand tall near a stable support.",
+      "March gently, alternating your feet.",
+      "Keep a comfortable pace and posture."
+    ],
+    breathing: "Breathe normally and steadily.",
+    safety: "Stop if you feel dizzy or unusually breathless."
+  }
+};
+
+const $ = id => document.getElementById(id);
+
+function readHistory() {
+  try {
+    return JSON.parse(localStorage.getItem("fitpilot-history") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function renderHistory() {
+  const history = readHistory();
+  $("total").textContent = "Completed sessions: " + history.length;
+  $("history").replaceChildren();
+
+  history.slice().reverse().forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    $("history").appendChild(li);
+  });
+}
+
+function showWorkout() {
+  const muscle = $("muscle").value;
+  const level = $("level").value;
+  const ex = exercises[muscle];
+
+  $("workoutTitle").textContent = muscle + " • " + level;
+  $("status").textContent = "";
+
+  const list = document.createElement("div");
+  const title = document.createElement("h3");
+  title.textContent = ex.name + " — " + ex.sets + " sets";
+  list.appendChild(title);
+
+  const reps = document.createElement("p");
+  reps.textContent = "Target: " + ex.reps;
+  list.appendChild(reps);
+
+  const steps = document.createElement("ol");
+  ex.steps.forEach(step => {
+    const li = document.createElement("li");
+    li.textContent = step;
+    steps.appendChild(li);
+  });
+  list.appendChild(steps);
+
+  [ ["Breathing", ex.breathing],
+    ["Safety", ex.safety]
+  ].forEach(([heading, text]) => {
+    const p = document.createElement("p");
+    const strong = document.createElement("strong");
+    strong.textContent = heading + ": ";
+    p.append(strong, document.createTextNode(text));
+    list.appendChild(p);
+  });
+
+  const note = document.createElement("p");
+  note.className = "muted";
+  note.textContent =
+    "Demo only: exercise options and difficulty are not yet personalized.";
+  list.appendChild(note);
+
+  $("exerciseList").replaceChildren(list);
+}
+
+$("showWorkout").addEventListener("click", showWorkout);
+
+$("completeWorkout").addEventListener("click", () => {
+  const entry = new Date().toLocaleString() + " — " +
+    $("muscle").value + " (" + $("level").value + ")";
+
+  try {
+    const history = readHistory();
+    history.push(entry);
+    localStorage.setItem("fitpilot-history", JSON.stringify(history));
+    $("status").textContent = "Session saved on this device!";
+    renderHistory();
+  } catch {
+    $("status").textContent =
+      "Could not save. Check browser storage settings.";
+  }
+});
+
+$("clearHistory").addEventListener("click", () => {
+  if (!confirm("Clear all workout history on this device?")) return;
+  localStorage.removeItem("fitpilot-history");
+  $("status").textContent = "Local history cleared.";
+  renderHistory();
+});
+
+showWorkout();
+renderHistory();
+</script>
+</body>
+</html>
